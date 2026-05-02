@@ -1,0 +1,121 @@
+[
+    {
+        "region_id": 1,
+        "region_name": "NCR",
+        "region_description": "National Capital Region",
+        "island_id": 1,
+        "FIELD4": ""
+    },
+    {
+        "region_id": 2,
+        "region_name": "CAR",
+        "region_description": "Cordillera Administrative Region",
+        "island_id": 1,
+        "FIELD4": ""
+    },
+    {
+        "region_id": 3,
+        "region_name": "Region I",
+        "region_description": "Ilocos Region",
+        "island_id": 1,
+        "FIELD4": ""
+    },
+    {
+        "region_id": 4,
+        "region_name": "Region II",
+        "region_description": "Cagayan Valley",
+        "island_id": 1,
+        "FIELD4": ""
+    },
+    {
+        "region_id": 5,
+        "region_name": "Region III",
+        "region_description": "Central Luzon",
+        "island_id": 1,
+        "FIELD4": ""
+    },
+    {
+        "region_id": 6,
+        "region_name": "Region IV-A",
+        "region_description": "CALABARZON",
+        "island_id": 1,
+        "FIELD4": ""
+    },
+    {
+        "region_id": 7,
+        "region_name": "Region IV-B",
+        "region_description": "MIMAROPA",
+        "island_id": 1,
+        "FIELD4": ""
+    },
+    {
+        "region_id": 8,
+        "region_name": "Region V",
+        "region_description": "Bicol Region",
+        "island_id": 1,
+        "FIELD4": ""
+    },
+    {
+        "region_id": 9,
+        "region_name": "Region VI",
+        "region_description": "Western Visayas",
+        "island_id": 2,
+        "FIELD4": ""
+    },
+    {
+        "region_id": 10,
+        "region_name": "Region VII",
+        "region_description": "Central Visayas",
+        "island_id": 2,
+        "FIELD4": ""
+    },
+    {
+        "region_id": 11,
+        "region_name": "Region VIII",
+        "region_description": "Eastern Visayas",
+        "island_id": 2,
+        "FIELD4": ""
+    },
+    {
+        "region_id": 12,
+        "region_name": "Region IX",
+        "region_description": "Zamboanga Peninsula",
+        "island_id": 3,
+        "FIELD4": ""
+    },
+    {
+        "region_id": 13,
+        "region_name": "Region X",
+        "region_description": "Northern Mindanao",
+        "island_id": 3,
+        "FIELD4": ""
+    },
+    {
+        "region_id": 14,
+        "region_name": "Region XI",
+        "region_description": "Davao Region",
+        "island_id": 3,
+        "FIELD4": ""
+    },
+    {
+        "region_id": 15,
+        "region_name": "Region XII",
+        "region_description": "SOCCSKSARGEN",
+        "island_id": 3,
+        "FIELD4": ""
+    },
+    {
+        "region_id": 16,
+        "region_name": "Region XIII",
+        "region_description": "CARAGA",
+        "island_id": 3,
+        "FIELD4": ""
+    },
+    {
+        "region_id": 17,
+        "region_name": "ARMM",
+        "region_description": "Autonomous Region in Muslim Mindanao",
+        "island_id": 3,
+        "FIELD4": ""
+    }
+]

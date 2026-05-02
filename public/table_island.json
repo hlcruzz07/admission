@@ -1,0 +1,14 @@
+[
+    {
+        "island_id": 1,
+        "island_name": "Luzon"
+    },
+    {
+        "island_id": 2,
+        "island_name": "Visayas"
+    },
+    {
+        "island_id": 3,
+        "island_name": "Mindanao"
+    }
+]
