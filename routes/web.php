@@ -44,6 +44,7 @@ Route::get('/', function () {
 /*
 |--------------------------------------------------------------------------
 | QUEUE UI
+use Illuminate\Support\Facades\Redis; $keys = Redis::keys('active:*'); foreach($keys as $k) Redis::del($k); Redis::del('queue:waiting', 'queue:active'); echo "Done"
 |--------------------------------------------------------------------------
 */
 Route::get('/queue', function () {
