@@ -1,9 +1,27 @@
+import QueueCard from '@/components/QueueCard';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import StudentLayout from '@/layouts/student-layout';
+import { getQueueMessage } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 
-export default function Index() {
-    const [status, setStatus] = useState('loading');
-    const [position, setPosition] = useState(null);
+type PositionProps = {
+    status: string;
+    position: number;
+    applicants_ahead: number;
+    total_waiting: number;
+    estimated_arrival_time: string;
+    estimated_wait_minutes: number;
+    estimated_wait_text: string;
+    last_updated: string;
+    progress_percent: number;
+    token: string;
+};
 
+export default function Index() {
+    const [position, setPosition] = useState<PositionProps | null>(null);
+    const [loading, setLoading] = useState(true);
     // Step 2: polling system
     useEffect(() => {
         const interval = setInterval(async () => {
@@ -15,48 +33,94 @@ export default function Index() {
 
                 console.log('Queue response:', data);
 
-                if (data.error) {
+                if (data.error || !data.position) {
                     window.location.href = '/';
                     return;
                 }
 
                 if (data.status === 'allowed') {
-                    setStatus('allowed');
-
-                    // redirect to form
                     window.location.href = '/form';
                     return;
                 }
 
-                setStatus('waiting');
-                setPosition(data.position);
+                setPosition(data);
+                setLoading(false);
             } catch (err) {
                 console.error(err);
             }
-        }, 3000);
+        }, 5000);
 
         return () => clearInterval(interval);
     }, []);
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-gray-100">
-            <div className="w-[400px] rounded-2xl bg-white p-8 text-center shadow-lg">
-                <h1 className="mb-4 text-2xl font-bold">Admission Queue</h1>
+        <StudentLayout>
+            <Card className="relative z-10 rounded-none md:rounded-md md:p-5">
+                {loading && (
+                    <div className="bg-background/80 absolute inset-0 z-20 flex items-center justify-center rounded-md backdrop-blur-sm">
+                        <div className="flex flex-col items-center gap-3">
+                            <div className="size-10 animate-spin rounded-full border-4 border-[var(--main-color)] border-t-transparent" />
 
-                {status === 'loading' && <p className="text-gray-600">Connecting to queue...</p>}
-
-                {status === 'waiting' && (
-                    <>
-                        <p className="text-lg text-gray-700">You are in queue</p>
-
-                        <p className="mt-3 text-3xl font-bold text-blue-600">#{position ?? '...'}</p>
-
-                        <p className="mt-2 text-sm text-gray-500">Please do not close this page</p>
-                    </>
+                            <p className="text-muted-foreground font-medium">Loading...</p>
+                        </div>
+                    </div>
                 )}
+                <CardHeader>
+                    <div className="flex flex-col items-center gap-5 md:flex-row">
+                        <div className="w-20">
+                            <img src="/logo.webp" alt="CHMSU" className="h-full w-full rounded-lg object-cover" />
+                        </div>
+                        <div className="space-y-1 text-center md:text-start">
+                            <h1 className="text-2xl font-bold text-[var(--main-color)]">Carlos Hidalo Memorial State University</h1>
 
-                {status === 'allowed' && <p className="font-semibold text-green-600">Redirecting to form...</p>}
-            </div>
-        </div>
+                            <p className="text-muted-foreground text-lg">Admission Queue Waiting Room</p>
+                        </div>
+                    </div>
+
+                    <p className="text-muted-foreground mx-auto mt-3 max-w-2xl text-center leading-relaxed md:text-start">
+                        {getQueueMessage(position?.applicants_ahead!)}{' '}
+                    </p>
+                </CardHeader>
+                <CardContent className="relative mt-8 space-y-5">
+                    <div className="relative space-y-3">
+                        <div className="absolute top-[-30px] z-10" style={{ left: `${position?.progress_percent! - 2.5}%` }}>
+                            <div className="relative flex flex-col items-center">
+                                <Badge variant="secondary" className="bg-[var(--main-color)] text-white">
+                                    {position?.progress_percent}%
+                                </Badge>
+
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    fill="var(--main-color)"
+                                    className="absolute bottom-[-13px] size-6"
+                                >
+                                    <path d="M6 9l6 6 6-6" />
+                                </svg>
+                            </div>
+                        </div>
+                        <Progress value={position?.progress_percent} />
+                    </div>
+                    <p className="text-muted-foreground text-sm">
+                        Current position: <b className="text-[var(--main-color)]">{position?.position}</b> of{' '}
+                        <b className="text-[var(--main-color)]">{position?.total_waiting}</b>
+                    </p>
+
+                    <div className="grid gap-3 md:grid-cols-2">
+                        <QueueCard title="Expected time to arrive" value={position?.estimated_arrival_time} />
+                        <QueueCard title="Estimated waiting time" value={position?.estimated_wait_text} />
+
+                        <QueueCard title="Applicants ahead of you" value={position?.applicants_ahead.toLocaleString()} />
+                        <QueueCard title="Status last updated" value={position?.last_updated} />
+                    </div>
+
+                    <p className="text-muted-foreground">
+                        Once it's your turn, you will only have <b className="text-[var(--main-color)]">5 minutes</b> to submit your application.
+                    </p>
+
+                    <p className="text-muted-foreground text-sm">Queue ID: {position?.token}</p>
+                </CardContent>
+            </Card>
+        </StudentLayout>
     );
 }

@@ -22,6 +22,7 @@ createInertiaApp({
         root.render(
             <>
                 <Toaster />
+
                 <App {...props} />
             </>,
         );
