@@ -7,7 +7,7 @@ const Progress = React.forwardRef<
   React.ElementRef<typeof ProgressPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root>
 >(({ className, value = 0, ...props }, ref) => (
-  <div className="relative w-full">
+  <div className="relative w-full overflow-hidden">
     <ProgressPrimitive.Root
       ref={ref}
       className={cn(
@@ -23,7 +23,15 @@ const Progress = React.forwardRef<
     </ProgressPrimitive.Root>
 
     
-     {(value || 0) > 2 && <img src="/walking.gif" style={{ left: `${(value || 0) - 4}%` }} className=" absolute -translate-y-1/2 top-1/2 size-8 rounded-md object-cover ps-1" />}
+    {(value || 0) >= 8 && (
+        <img
+      src="/walking.gif"
+      className="absolute -translate-y-1/2 top-1/2 size-8 object-cover ps-1 "
+      style={{
+        left: `calc(${(value || 0)}% - 30px)`,
+      }}
+    />
+  )}
   </div>
 ))
 Progress.displayName = ProgressPrimitive.Root.displayName

@@ -1,242 +1,114 @@
 <?php
 
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CampusController;
+use App\Http\Controllers\QueueController;
+use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\ScheduleTimeController;
+use App\Http\Controllers\VenueController;
+use App\Models\Campus;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
-/*
-|--------------------------------------------------------------------------
-| HOME
-|--------------------------------------------------------------------------
-*/
-Route::get('/', function () {
-    $existing = request()->cookie('queue_token');
-    $token = null;
+Route::middleware('throttle:60,1')->group(function () {
 
-    if ($existing) {
-        $inWaiting = Redis::zscore('queue:waiting', $existing);
-        $inActive = Redis::zscore('queue:active', $existing);
+    Route::get('/', [QueueController::class, 'index'])->name('home');
+    Route::get('/admin', [AuthController::class, 'index'])->name('admin')->middleware('guest');
+    Route::get('/auth/google/redirect', [AuthController::class, 'redirect'])->name('login');
+    Route::get('/auth/google/callback', [AuthController::class, 'callback']);
 
-        if ($inWaiting !== null || $inActive !== null) {
-            $token = $existing;
-        }
-    }
-
-    // Create new token
-    if (!$token) {
-        $token = (string) Str::uuid();
-
-        // Use timestamp as score
-        Redis::zadd('queue:waiting', now()->timestamp, $token);
-        Redis::setex("waiting:$token", 1800, true);
-    }
-
-    // If already active → go to form
-    if (Redis::zscore('queue:active', $token)) {
-        return redirect('/form')->cookie('queue_token', $token, 60);
-    }
-
-    return redirect('/queue')->cookie('queue_token', $token, 60);
-})->name('home');
+    Route::get('/queue', [QueueController::class, 'queue'])->name('queue');
 
 
-/*
-|--------------------------------------------------------------------------
-| QUEUE UI
-use Illuminate\Support\Facades\Redis; $keys = Redis::keys('active:*'); foreach($keys as $k) Redis::del($k); Redis::del('queue:waiting', 'queue:active'); echo "Done"
-|--------------------------------------------------------------------------
-*/
-Route::get('/queue', function () {
-    return Inertia::render('Student/Queue/Index');
-});
+    Route::middleware('form.limit')->group(function () {
+
+        Route::get('/student/form', function () {
+            $schedules = Campus::with('venues.schedules.times')->get();
 
 
-/*
-|--------------------------------------------------------------------------
-| QUEUE ENTER (OPTIMIZED)
-|--------------------------------------------------------------------------
-*/
-Route::get('/queue/enter', function () {
-    $token = request()->cookie('queue_token');
+            return Inertia::render('Student/Form/Index', [
+                'schedules' => $schedules,
+            ]);
+        })->name('student.form');
 
-    if (!$token) {
-        return response()->json(['error' => 'No token'], 400);
-    }
 
-    // ✅ KEEP USER ALIVE IN QUEUE
-    if (Redis::exists("waiting:$token")) {
-        Redis::expire("waiting:$token", 1800);
-    }
+        Route::post('/student/create', function () {
 
-    $now = now()->timestamp;
+            $token = request()->cookie('queue_token');
 
-    // 🔥 Remove expired active users
-    Redis::zremrangebyscore('queue:active', 0, $now);
-
-    // Already allowed
-    if (Redis::zscore('queue:active', $token)) {
-        return response()->json([
-            'status' => 'allowed'
-        ]);
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | 🔒 ATOMIC LOCK
-    |--------------------------------------------------------------------------
-    */
-    $lock = Redis::set('queue:lock', 1, 'NX', 'EX', 2);
-
-    if ($lock) {
-        try {
-            $activeCount = Redis::zcard('queue:active');
-            $max = config('queue_room.max_active');
-
-            if ($activeCount < $max) {
-                $slots = $max - $activeCount;
-
-                $nextUsers = Redis::zrange('queue:waiting', 0, $slots - 1);
-
-                foreach ($nextUsers as $next) {
-                    if (!Redis::exists("waiting:$next")) {
-                        Redis::zrem('queue:waiting', $next);
-                        continue;
-                    }
-
-                    Redis::zrem('queue:waiting', $next);
-                    Redis::zadd('queue:active', $now + 300, $next);
-
-                    Redis::setex("active:$next", 300, true);
-                }
+            if (!$token) {
+                return redirect()->route('home');
             }
-        } finally {
-            Redis::del('queue:lock');
-        }
-    }
 
-    // Check again
-    if (Redis::zscore('queue:active', $token)) {
-        return response()->json([
-            'status' => 'allowed'
-        ]);
-    }
+            Redis::zrem('queue:active', $token);
+            Redis::del("active:$token");
+            Redis::del("waiting:$token");
 
-    /*
-    |--------------------------------------------------------------------------
-    | 🚀 POSITION
-    |--------------------------------------------------------------------------
-    */
-    $position = Redis::zrank('queue:waiting', $token);
-    $position = $position !== null ? $position + 1 : null;
+            return redirect()->route('home')->cookie('queue_token', null, -1);
 
-    $totalWaiting = Redis::zcard('queue:waiting');
+        })->name('student.create');
+    });
 
-    /*
-    |--------------------------------------------------------------------------
-    | 📌 STORE INITIAL POSITION (ONLY ONCE)
-    |--------------------------------------------------------------------------
-    */
-    if ($position && !Redis::exists("initial_pos:$token")) {
-        Redis::set("initial_pos:$token", $position);
-    }
 
-    $initialPosition = Redis::get("initial_pos:$token");
 
-    /*
-    |--------------------------------------------------------------------------
-    | 📊 ESTIMATION LOGIC
-    |--------------------------------------------------------------------------
-    */
-    $maxActive = config('queue_room.max_active'); // e.g. 500
-    $sessionSeconds = 100; // 150 = 2.5 mins , 600 = 10mins
-
-    $throughputPerSecond = $maxActive / $sessionSeconds;
-
-    $estimatedSeconds = ($position && $throughputPerSecond > 0)
-        ? $position / $throughputPerSecond
-        : 0;
-
-    /*
-    |--------------------------------------------------------------------------
-    | ⏱️ HUMAN-READABLE WAIT TIME
-    |--------------------------------------------------------------------------
-    */
-    $seconds = (int) $estimatedSeconds;
-
-    $days = floor($seconds / 86400);
-    $hours = floor(($seconds % 86400) / 3600);
-    $minutes = floor(($seconds % 3600) / 60);
-
-    $parts = [];
-
-    if ($days > 0) {
-        $parts[] = $days . ' day' . ($days > 1 ? 's' : '');
-    }
-    if ($hours > 0) {
-        $parts[] = $hours . ' hour' . ($hours > 1 ? 's' : '');
-    }
-    if ($minutes > 0) {
-        $parts[] = $minutes . ' minute' . ($minutes > 1 ? 's' : '');
-    }
-
-    $waitingTimeText = count($parts)
-        ? implode(', ', array_slice($parts, 0, 2))
-        : 'Less than a minute';
-
-    /*
-    |--------------------------------------------------------------------------
-    | 🕒 ARRIVAL TIME (TIMEZONE SAFE)
-    |--------------------------------------------------------------------------
-    */
-    $arrivalTime = now()
-        ->timezone(config('app.timezone'))
-        ->addSeconds($estimatedSeconds)
-        ->format('h:i A');
-
-    /*
-    |--------------------------------------------------------------------------
-    | 🔄 LAST UPDATED
-    |--------------------------------------------------------------------------
-    */
-    $lastUpdated = now()
-        ->timezone(config('app.timezone'))
-        ->format('h:i:s A');
-
-    /*
-    |--------------------------------------------------------------------------
-    | 📊 REAL PROGRESS (FIXED)
-    |--------------------------------------------------------------------------
-    */
-    $progress = ($initialPosition && $position && $initialPosition > 0)
-        ? round((($initialPosition - $position) / $initialPosition) * 100)
-        : 0;
-
-    return response()->json([
-        'status' => 'waiting',
-
-        // queue data
-        'position' => $position,
-        'total_waiting' => $totalWaiting,
-        'applicants_ahead' => $position ? $position - 1 : 0,
-
-        // UI cards
-        'estimated_wait_text' => $waitingTimeText,
-        'estimated_arrival_time' => $arrivalTime,
-        'last_updated' => $lastUpdated,
-
-        // progress
-        'progress_percent' => $progress,
-        'token' => $token
-    ]);
 });
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/dashboard', [AdminController::class, 'index'])->name('dashboard');
+
+    // CAMPUSES
+    Route::get('/campuses', [CampusController::class, 'index'])->middleware('permission:view_campuses')->name('campuses');
+    Route::get('/campus/{id}', [CampusController::class, 'edit'])->middleware('permission:view_campuses')->name('edit.campus');
+    Route::put('/campus/{id}', [CampusController::class, 'update'])->middleware('permission:update_campuses')->name('update.campus');
+    Route::post('/campus/{id}', [CampusController::class, 'create'])->middleware('permission:create_campuses')->name('create.campus');
+
+    Route::post('/venue/create/{campus_id}', [VenueController::class, 'create'])->middleware('permission:create_venues')->name('create.venue');
+    Route::put('/venue/update/{venue_id}', [VenueController::class, 'update'])->middleware('permission:update_venues')->name('update.venue');
+
+    Route::post('/schedule/create/{venue_id}', [ScheduleController::class, 'create'])->middleware('permission:create_schedules')->name('create.schedule');
+    Route::put('/schedule/update/{schedule_id}', [ScheduleController::class, 'update'])->middleware('permission:update_schedules')->name('update.schedule');
+    Route::delete('/schedule/delete/{schedule_id}', [ScheduleController::class, 'destroy'])->middleware('permission:delete_schedules')->name('delete.schedule');
+
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+});
+
+
+
+
+
+
+
+Route::get('/test-relations', function () {
+
+    $campuses = Campus::with([
+        'venues.schedules.times'
+    ])->get();
+
+    return ($campuses);
+});
+
+
+
 
 
 Route::get('/test/fill-queue', function () {
-    $count = 5000;
+    // ✅ Clear queue
+    Redis::del('queue:waiting');
+
+    // ✅ Clear all waiting tokens
+    $keys = Redis::keys('waiting:*');
+    if (!empty($keys)) {
+        Redis::del($keys);
+    }
+
+    $count = 25;
     $now = now()->timestamp;
 
-    $batchSize = 500; // prevent overload
+    $batchSize = 500;
 
     for ($i = 0; $i < $count; $i += $batchSize) {
         Redis::pipeline(function ($pipe) use ($batchSize, $i, $count, $now) {
@@ -248,7 +120,10 @@ Route::get('/test/fill-queue', function () {
 
                 $pipe->zadd('queue:waiting', $score, $token);
 
-                $pipe->setex("waiting:$token", 1800, true);
+                // 5–7 mins staggered expiry
+                $ttl = 300 + ($i + $j);
+
+                $pipe->setex("waiting:$token", $ttl, true);
             }
         });
     }
@@ -258,52 +133,69 @@ Route::get('/test/fill-queue', function () {
         'total' => Redis::zcard('queue:waiting')
     ]);
 });
+Route::get('/test/clear-queue', function () {
 
-/*
-|--------------------------------------------------------------------------
-| FORM PAGE
-|--------------------------------------------------------------------------
-*/
-Route::get('/form', function () {
-    return Inertia::render('Student/Form/Index');
-});
-// ->middleware('form_limit');
+    // Clear sorted sets
+    Redis::del('queue:waiting');
+    Redis::del('queue:active');
 
-
-/*
-|--------------------------------------------------------------------------
-| FORM SUBMIT
-|--------------------------------------------------------------------------
-*/
-Route::post('/form/submit', function () {
-    $token = request()->cookie('queue_token');
-
-    if (!$token) {
-        return redirect('/');
+    // Clear waiting tokens
+    $waitingKeys = Redis::keys('waiting:*');
+    if (!empty($waitingKeys)) {
+        Redis::del($waitingKeys);
     }
 
-    Redis::zrem('queue:active', $token);
-    Redis::del("active:$token");
-    Redis::del("waiting:$token");
+    // Clear active tokens
+    $activeKeys = Redis::keys('active:*');
+    if (!empty($activeKeys)) {
+        Redis::del($activeKeys);
+    }
 
-    return redirect('/')
-        ->cookie('queue_token', null, -1);
-        
-})->middleware('form_limit');
-
-
-/*
-|--------------------------------------------------------------------------
-| DASHBOARD
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+    return response()->json([
+        'message' => 'Queue cleared successfully.',
+        'waiting' => Redis::zcard('queue:waiting'),
+        'active' => Redis::zcard('queue:active'),
+    ]);
 });
 
+Route::get('/test/add-batch', function () {
+    $count = 53; // how many to add
+    $now = now()->timestamp;
 
+    $batchSize = 500;
 
-require __DIR__ . '/settings.php';
-require __DIR__ . '/auth.php';
+    // ✅ Get current last score (latest person in queue)
+    $last = Redis::zrevrange('queue:waiting', 0, 0, ['withscores' => true]);
+
+    if (!empty($last)) {
+        $lastScore = array_values($last)[0]; // last score in queue
+    } else {
+        $lastScore = $now;
+    }
+
+    for ($i = 0; $i < $count; $i += $batchSize) {
+        Redis::pipeline(function ($pipe) use ($batchSize, $i, $count, $lastScore) {
+
+            for ($j = 0; $j < $batchSize && ($i + $j) < $count; $j++) {
+                $token = (string) Str::uuid();
+
+                // ✅ Continue from last score (keeps order correct)
+                $score = $lastScore + ($i + $j + 1);
+
+                $pipe->zadd('queue:waiting', $score, $token);
+
+                // ✅ Keep your staggered expiration
+                $ttl = 300 + ($i + $j);
+
+                $pipe->setex("waiting:$token", $ttl, true);
+            }
+        });
+    }
+
+    return response()->json([
+        'message' => 'Batch added to queue',
+        'total' => Redis::zcard('queue:waiting')
+    ]);
+});
+
+require __DIR__ . '/api.php';

@@ -65,3 +65,6 @@ export function sliceText(txt: string, maxLength: number) {
     if (txt.length <= maxLength) return txt;
     return txt.slice(0, maxLength) + '...';
 }
+export const normalizeName = (name: string) => {
+    return name.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+};

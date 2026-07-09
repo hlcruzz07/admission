@@ -1,9 +1,10 @@
 export type Student = {
+    id?: number;
     fname: string;
     mname: string | null;
     lname: string;
     suffix: string | null;
     birthdate: string | null;
     email: string;
-    appointment_date: string | null;
+    schedule_time_id?: number | null;
 };

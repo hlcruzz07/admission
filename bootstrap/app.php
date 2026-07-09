@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CheckToken;
 use App\Http\Middleware\FormLimit;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
@@ -23,7 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
-            'form_limit' => FormLimit::class,
+            'form.limit' => FormLimit::class,
+
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

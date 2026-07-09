@@ -29,6 +29,24 @@ class RolePermissionSeeder extends Seeder
             'view_activity_logs',
             'export_activity_logs',
 
+            // campus
+            'view_campuses',
+            'update_campuses',
+            'delete_campuses',
+            'create_campuses',
+
+            // venues
+            'view_venues',
+            'update_venues',
+            'delete_venues',
+            'create_venues',
+
+            // schedules
+            'view_schedules',
+            'update_schedules',
+            'delete_schedules',
+            'create_schedules',
+
             // Accounts
             'view_accounts',
             'update_accounts',

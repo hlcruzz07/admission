@@ -13,28 +13,20 @@ class FormLimit
     {
         $token = $request->cookie('queue_token');
 
-        // ❌ HARD BLOCK: no token
         if (!$token) {
-            return redirect('/queue');
+            return redirect()->route('home');
         }
 
-        // ✅ Cleanup expired users using ZSET score (expiry timestamp)
         $now = now()->timestamp;
         Redis::zremrangebyscore('queue:active', 0, $now);
 
-        // ✅ Check if user is still active
         $isActive = Redis::zscore('queue:active', $token);
 
         if ($isActive !== null) {
-            Log::info('FORM MIDDLEWARE HIT', [
-                'token' => $token,
-                'count' => Redis::zcard('queue:active')
-            ]);
-
             return $next($request);
+
         }
 
-        // ❌ Not allowed
-        return redirect('/queue');
+        return redirect()->route('home');
     }
 }

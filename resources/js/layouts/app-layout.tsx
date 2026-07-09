@@ -16,7 +16,6 @@ export default ({ children, breadcrumbs, ...props }: AppLayoutProps) => {
     useEffect(() => {
         if (!flash) return;
 
-        // Small delay to prevent duplicate toasts in StrictMode
         const timeoutId = setTimeout(() => {
             if (flash.success) toast.success(flash.success);
             if (flash.error) toast.error(flash.error);
@@ -26,7 +25,9 @@ export default ({ children, breadcrumbs, ...props }: AppLayoutProps) => {
 
         return () => clearTimeout(timeoutId);
     }, [flash]);
-    <AppLayoutTemplate breadcrumbs={breadcrumbs} {...props}>
-        {children}
-    </AppLayoutTemplate>;
+    return (
+        <AppLayoutTemplate breadcrumbs={breadcrumbs} {...props}>
+            {children}
+        </AppLayoutTemplate>
+    );
 };

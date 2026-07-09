@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import StudentLayout from '@/layouts/student-layout';
+import apiService from '@/lib/api-service';
 import { getQueueMessage } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 
@@ -20,33 +21,43 @@ type PositionProps = {
 };
 
 export default function Index() {
+    // {
+    //     status: 'waiting',
+    //     position: 1,
+    //     applicants_ahead: 0,
+    //     estimated_arrival_time: '09:48 AM',
+    //     estimated_wait_minutes: 0,
+    //     progress_percent: 100,
+    //     total_waiting: 23,
+    //     estimated_wait_text: 'Less than a minute',
+    //     last_updated: '2026-05-04T01:48:26.760244Z',
+    //     token: 'a1b2c3d4-e5f6-4789-abcd-ef1234567890',
+    // }
+
     const [position, setPosition] = useState<PositionProps | null>(null);
     const [loading, setLoading] = useState(true);
     // Step 2: polling system
     useEffect(() => {
         const interval = setInterval(async () => {
             try {
-                const res = await fetch('/queue/enter', {
-                    credentials: 'include',
-                });
-                const data = await res.json();
+                const { data } = await apiService.get(route('api.queue'));
 
                 console.log('Queue response:', data);
 
-                if (data.error || !data.position) {
-                    window.location.href = '/';
+                if (data?.error || !data?.position) {
+                    window.location.href = route('home');
                     return;
                 }
 
-                if (data.status === 'allowed') {
-                    window.location.href = '/form';
+                if (data?.status === 'allowed') {
+                    window.location.href = route('student.form');
                     return;
                 }
 
                 setPosition(data);
                 setLoading(false);
             } catch (err) {
-                console.error(err);
+                console.error('Error checking interval', err);
             }
         }, 5000);
 
@@ -55,9 +66,9 @@ export default function Index() {
 
     return (
         <StudentLayout>
-            <Card className="relative z-10 rounded-none md:rounded-md md:p-5">
+            <Card className="relative z-10 overflow-hidden rounded-none md:rounded-md md:p-5">
                 {loading && (
-                    <div className="bg-background/80 absolute inset-0 z-20 flex items-center justify-center rounded-md backdrop-blur-sm">
+                    <div className="bg-background/80 absolute inset-0 top-0 left-0 z-100 flex items-center justify-center rounded-md backdrop-blur-sm">
                         <div className="flex flex-col items-center gap-3">
                             <div className="size-10 animate-spin rounded-full border-4 border-[var(--main-color)] border-t-transparent" />
 
@@ -83,10 +94,13 @@ export default function Index() {
                 </CardHeader>
                 <CardContent className="relative mt-8 space-y-5">
                     <div className="relative space-y-3">
-                        <div className="absolute top-[-30px] z-10" style={{ left: `${position?.progress_percent! - 2.5}%` }}>
+                        <div className="absolute top-[-30px] z-10" style={{ left: `calc(${position?.progress_percent}% - 30px)` }}>
                             <div className="relative flex flex-col items-center">
-                                <Badge variant="secondary" className="bg-[var(--main-color)] text-white">
-                                    {position?.progress_percent}%
+                                <Badge variant="secondary" className="bg-[var(--main-color)] text-white hover:bg-[var(--main-color)]">
+                                    {(position?.progress_percent || 0) > 1
+                                        ? Math.floor(position?.progress_percent!)
+                                        : (position?.progress_percent || 0).toFixed(1)}
+                                    %
                                 </Badge>
 
                                 <svg
@@ -102,8 +116,8 @@ export default function Index() {
                         <Progress value={position?.progress_percent} />
                     </div>
                     <p className="text-muted-foreground text-sm">
-                        Current position: <b className="text-[var(--main-color)]">{position?.position}</b> of{' '}
-                        <b className="text-[var(--main-color)]">{position?.total_waiting}</b>
+                        Current position: <b className="text-[var(--main-color)]">{position?.position.toLocaleString()}</b> of{' '}
+                        <b className="text-[var(--main-color)]">{position?.total_waiting.toLocaleString()}</b>
                     </p>
 
                     <div className="grid gap-3 md:grid-cols-2">
