@@ -26,15 +26,19 @@ class CampusController extends Controller
     {
         $campus = Campus::with(['venues.schedules.times'])->findOrFail($id);
 
-        $total_slots = $campus->venues
+        $times = $campus->venues
             ->flatMap(fn($venue) => $venue->schedules)
-            ->flatMap(fn($schedule) => $schedule->times)
-            ->sum('slots');
+            ->flatMap(fn($schedule) => $schedule->times);
+
+        $total_slots = $times->sum('slots');
+        $total_booked_slots = $times->sum('booked_slots');
+        $total_available_slots = max($total_slots - $total_booked_slots, 0);
 
         return Inertia::render('Admin/Campus/Index', [
             'campus' => $campus,
             'total_slots' => $total_slots,
+            'total_booked_slots' => $total_booked_slots,
+            'total_available_slots' => $total_available_slots,
         ]);
-
     }
 }

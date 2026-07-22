@@ -115,8 +115,6 @@ export default function AddSchedule({ open, setOpen, dataVenue }: AddSchedulePro
         });
     };
 
-    console.log(data);
-
     return (
         <Dialog open={open || processing} onOpenChange={setOpen}>
             <DialogContent className="sm:max-w-2xl">

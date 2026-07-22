@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             VenueSeeder::class,
             ScheduleSeeder::class,
             ScheduleTimeSeeder::class,
+            SystemSettingsSeeder::class,
         ]);
     }
 }

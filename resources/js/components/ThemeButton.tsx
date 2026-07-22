@@ -20,7 +20,7 @@ export default function ThemeButton({ className, ...props }: Props) {
     ];
 
     return (
-        <div {...props} className={cn('fixed top-3 right-3 z-50', className)}>
+        <div {...props} className={cn('fixed top-3 right-3 z-100', className)}>
             <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                 <PopoverTrigger>
                     <Button variant={appearance === 'light' ? 'default' : 'outline'} size="icon">
@@ -46,8 +46,8 @@ export default function ThemeButton({ className, ...props }: Props) {
                                 className={cn(
                                     'flex w-full items-center rounded-md px-3.5 py-1.5 transition-colors',
                                     appearance === value
-                                        ? 'bg-[var(--main-color)] text-white shadow-xs dark:bg-neutral-700 dark:text-neutral-100'
-                                        : 'text-neutral-500 hover:bg-neutral-200/60 hover:text-black dark:text-neutral-400 dark:hover:bg-neutral-700/60',
+                                        ? 'bg-primary text-primary-foreground shadow-xs'
+                                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                                 )}
                             >
                                 <Icon className="-ml-1 h-4 w-4" />

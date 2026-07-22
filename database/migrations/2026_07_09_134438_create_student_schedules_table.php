@@ -1,6 +1,5 @@
 <?php
 
-use App\ScheduleStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -10,12 +9,10 @@ return new class extends Migration {
     {
         Schema::create('student_schedules', function (Blueprint $table) {
             $table->id();
-
             $table->foreignId('student_id')->constrained()->onDelete('cascade');
             $table->foreignId('schedule_time_id')->constrained()->onDelete('cascade');
-
-            $table->enum('status', [ScheduleStatus::PENDING, ScheduleStatus::COMPLETED])->default(ScheduleStatus::PENDING);
-
+            $table->timestamp('email_sent_at')->nullable();
+            $table->text('token')->nullable();
             $table->timestamps();
             $table->unique(['student_id', 'schedule_time_id']);
         });

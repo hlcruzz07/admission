@@ -3,6 +3,9 @@
 namespace App\Http\Middleware;
 
 use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use App\Models\Campus;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -45,6 +48,11 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user() ? $request->user()->load('roles', 'permissions') : null,
             ],
+            'campuses' => Cache::remember('campuses.all', now()->addHours(12), function () {
+                Log::error('Fetching from database');
+
+                return Campus::select('id', 'name')->get();
+            }),
             'sidebarOpen' => !$request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [
                 'success' => $request->session()->get('success'),
@@ -52,6 +60,7 @@ class HandleInertiaRequests extends Middleware
                 'warning' => $request->session()->get('warning'),
                 'info' => $request->session()->get('info'),
             ],
+            'admissionIsOpen' => \App\Services\AppSettings::isAdmissionOpen(),
         ]);
     }
 }

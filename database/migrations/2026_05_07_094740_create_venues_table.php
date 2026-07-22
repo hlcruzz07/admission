@@ -16,6 +16,7 @@ return new class extends Migration {
             $table->string('name');
             $table->timestamps();
             $table->foreign('campus_id')->references('id')->on('campuses')->cascadeOnDelete();
+            $table->softDeletes();
         });
     }
 

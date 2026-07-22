@@ -12,9 +12,8 @@ class QueueApiController extends Controller
         $token = request()->cookie('queue_token');
 
         if (!$token) {
-            return redirect()->route('home');
+            return redirect()->route('home')->with('error', 'Session Expired');
         }
-
 
         if (Redis::exists("waiting:$token")) {
             Redis::expire("waiting:$token", 1800);
@@ -25,12 +24,9 @@ class QueueApiController extends Controller
         Redis::zremrangebyscore('queue:active', 0, $now);
 
         // Already allowed
-        if (Redis::zscore('queue:active', $token)) {
-            return response()->json([
-                'status' => 'allowed'
-            ]);
+        if (Redis::zscore('queue:active', $token) !== null) {
+            return response()->json(['status' => 'allowed']);
         }
-
 
         $lock = Redis::set('queue:lock', 1, 'NX', 'EX', 2);
 
@@ -42,18 +38,42 @@ class QueueApiController extends Controller
                 if ($activeCount < $max) {
                     $slots = $max - $activeCount;
 
-                    $nextUsers = Redis::zrange('queue:waiting', 0, $slots - 1);
+                    // withscores so we can preserve original position if they
+                    // time out and come back within the grace window later.
+                    $nextUsersWithScores = Redis::zrange('queue:waiting', 0, $slots - 1, ['withscores' => true]);
+                    $nextUsers = array_keys($nextUsersWithScores);
 
-                    foreach ($nextUsers as $next) {
-                        if (!Redis::exists("waiting:$next")) {
-                            Redis::zrem('queue:waiting', $next);
-                            continue;
-                        }
+                    if (!empty($nextUsers)) {
+                        // One round-trip: check existence for all candidates
+                        $existsResults = Redis::pipeline(function ($pipe) use ($nextUsers) {
+                            foreach ($nextUsers as $next) {
+                                $pipe->exists("waiting:$next");
+                            }
+                        });
 
-                        Redis::zrem('queue:waiting', $next);
-                        Redis::zadd('queue:active', $now + 300, $next);
+                        $activeSeconds = config('queue_room.active_seconds', 300);
+                        $graceSeconds = config('queue_room.grace_seconds', 300);
 
-                        Redis::setex("active:$next", 300, true);
+                        // One round-trip: zrem + conditionally promote all candidates
+                        Redis::pipeline(function ($pipe) use ($nextUsers, $existsResults, $nextUsersWithScores, $now, $activeSeconds, $graceSeconds) {
+                            foreach ($nextUsers as $i => $next) {
+                                $pipe->zrem('queue:waiting', $next);
+
+                                if ($existsResults[$i]) {
+                                    $pipe->zadd('queue:active', $now + $activeSeconds, $next);
+                                    $pipe->setex("active:$next", $activeSeconds, true);
+
+                                    // Remember their original queue position.
+                                    // Valid through the active window + grace buffer.
+                                    $pipe->setex(
+                                        "grace:$next",
+                                        $activeSeconds + $graceSeconds,
+                                        $nextUsersWithScores[$next]
+                                    );
+                                }
+                                // else: stale/expired token, just dropped from waiting
+                            }
+                        });
                     }
                 }
             } finally {
@@ -61,11 +81,9 @@ class QueueApiController extends Controller
             }
         }
 
-        // Check again
-        if (Redis::zscore('queue:active', $token)) {
-            return response()->json([
-                'status' => 'allowed'
-            ]);
+        // Check again after promotion pass
+        if (Redis::zscore('queue:active', $token) !== null) {
+            return response()->json(['status' => 'allowed']);
         }
 
         $position = Redis::zrank('queue:waiting', $token);
@@ -74,11 +92,11 @@ class QueueApiController extends Controller
         $totalWaiting = Redis::zcard('queue:waiting');
 
         if ($position && !Redis::exists("initial_pos:$token")) {
-            Redis::set("initial_pos:$token", $position);
+            Redis::setex("initial_pos:$token", 7200, $position);
         }
 
-        $maxActive = config('queue_room.max_active'); // e.g. 500
-        $sessionSeconds = 300; // 150 = 2.5 mins , 600 = 10mins
+        $maxActive = config('queue_room.max_active');
+        $sessionSeconds = config('queue_room.active_seconds', 300);
 
         $throughputPerSecond = $maxActive / $sessionSeconds;
 
@@ -132,8 +150,7 @@ class QueueApiController extends Controller
             'estimated_arrival_time' => $arrivalTime,
             'last_updated' => $lastUpdated,
             'progress_percent' => $progress,
-            'token' => $token
+            'token' => $token,
         ]);
-
     }
 }

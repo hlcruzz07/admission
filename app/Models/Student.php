@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 
 class Student extends Model
@@ -15,18 +16,22 @@ class Student extends Model
         'birthdate',
     ];
 
+    protected $appends = ['full_name'];
+
     public function schedule()
     {
-        return $this->hasOne(StudentSchedule::class, 'student_id')->with('schedule_time.schedule.venue.campus');
+        return $this->hasOne(StudentSchedule::class, 'student_id')->with('scheduleTime.schedule.venue.campus');
     }
 
-    public function getFullName(): string
+    public function fullName(): Attribute
     {
-        return trim(implode(' ', [
-            $this->fname,
-            $this->mname ? $this->mname . '.' : '',
-            $this->lname,
-            $this->suffix ? $this->suffix . '.' : '',
-        ]));
+        return Attribute::make(
+            get: fn() => trim(implode(' ', array_filter([
+                $this->fname,
+                $this->mname ? mb_strtoupper(mb_substr($this->mname, 0, 1)) . '.' : null,
+                $this->lname,
+                $this->suffix ?: null,
+            ])))
+        );
     }
 }

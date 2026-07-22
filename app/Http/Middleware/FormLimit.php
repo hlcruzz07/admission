@@ -14,7 +14,7 @@ class FormLimit
         $token = $request->cookie('queue_token');
 
         if (!$token) {
-            return redirect()->route('home');
+            return redirect()->route('home')->with('error', 'Session Expired');
         }
 
         $now = now()->timestamp;
@@ -27,6 +27,6 @@ class FormLimit
 
         }
 
-        return redirect()->route('home');
+        return redirect()->route('home')->with('error', 'Session Expired');
     }
 }

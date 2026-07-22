@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\CheckToken;
+use App\Http\Middleware\EnsureAuthenticated;
 use App\Http\Middleware\FormLimit;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
@@ -25,7 +26,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'form.limit' => FormLimit::class,
-
+            'admission.open' => \App\Http\Middleware\EnsureAdmissionIsOpen::class,
+            'schedule.locked' => \App\Http\Middleware\PreventScheduleChangesDuringAdmission::class,
+            'custom.auth' => EnsureAuthenticated::class
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

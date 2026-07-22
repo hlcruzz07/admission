@@ -22,7 +22,6 @@ class RolePermissionSeeder extends Seeder
 
             // students
             'view_students',
-            'update_students',
             'export_students',
 
             // logs
@@ -47,6 +46,12 @@ class RolePermissionSeeder extends Seeder
             'delete_schedules',
             'create_schedules',
 
+            // archive
+            'view_archive',
+            'restore_archive',
+
+            'update_admission_settings',
+
             // Accounts
             'view_accounts',
             'update_accounts',
@@ -62,7 +67,8 @@ class RolePermissionSeeder extends Seeder
             'view_permissions',
             'update_permissions',
             'create_permissions',
-            'delete_permissions'
+            'delete_permissions',
+
         ];
 
         foreach ($permissions as $perm) {
@@ -77,6 +83,16 @@ class RolePermissionSeeder extends Seeder
             'view_students',
             'export_students',
             'view_activity_logs',
+            'view_campuses',
+            'create_venues',
+            'update_venues',
+            'view_venues',
+            'view_schedules',
+            'create_schedules',
+            'update_schedules',
+            'delete_schedules',
+            'view_archive',
+            'restore_archive',
         ]);
     }
 }

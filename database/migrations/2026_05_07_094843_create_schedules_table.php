@@ -16,6 +16,7 @@ return new class extends Migration {
             $table->date('schedule_date');
 
             $table->timestamps();
+            $table->softDeletes();
             $table->foreign('venue_id')->references('id')->on('venues')->cascadeOnDelete();
         });
     }

@@ -20,7 +20,7 @@ class VenueController extends Controller
     public function create(CreateVenueRequest $request, int $campus_id)
     {
 
-        dd($request->all());
+
         try {
             DB::transaction(function () use ($request, $campus_id) {
 
@@ -58,6 +58,19 @@ class VenueController extends Controller
             return back()->with('success', 'Venue updated successfully');
 
         } catch (\Throwable $th) {
+            return back()->with('error', $th->getMessage());
+        }
+    }
+
+    public function destroy(int $venue_id)
+    {
+        try {
+            $this->venueRepo->destroy($venue_id);
+
+            return back()->with('success', 'Venue deleted successfully');
+
+        } catch (\Throwable $th) {
+
             return back()->with('error', $th->getMessage());
         }
     }

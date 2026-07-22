@@ -2,7 +2,7 @@ import { DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/co
 import { UserInfo } from '@/components/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { type User } from '@/types';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { LogOut } from 'lucide-react';
 
 interface UserMenuContentProps {
@@ -11,7 +11,10 @@ interface UserMenuContentProps {
 
 export function UserMenuContent({ user }: UserMenuContentProps) {
     const cleanup = useMobileNavigation();
-
+    const handleLogout = () => {
+        cleanup();
+        router.flushAll();
+    };
     return (
         <>
             <DropdownMenuLabel className="p-0 font-normal">
@@ -30,7 +33,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
             </DropdownMenuGroup>
             <DropdownMenuSeparator /> */}
             <DropdownMenuItem asChild>
-                <Link className="block w-full" method="post" href={route('logout')} as="button" onClick={cleanup}>
+                <Link className="block w-full" method="post" href={route('logout')} as="button" onClick={handleLogout}>
                     <LogOut className="mr-2" />
                     Log out
                 </Link>

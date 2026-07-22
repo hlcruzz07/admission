@@ -39,7 +39,8 @@ class AuthController extends Controller
                 //     request(),
                 //     'failed'
                 // );
-                return redirect()->route('admin')->with('error', 'Invalid credentials');
+                abort(403, 'Your account is not authorized.');
+                return;
             }
 
 
@@ -71,7 +72,7 @@ class AuthController extends Controller
 
             Log::error($e->getMessage());
 
-            return redirect()->route('admin')->with('error', 'Something went wrong.' . $e->getMessage());
+            return redirect()->route('admin')->with('error', $e->getMessage());
         }
     }
 

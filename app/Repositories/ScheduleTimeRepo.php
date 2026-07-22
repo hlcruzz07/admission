@@ -49,4 +49,14 @@ class ScheduleTimeRepo
             ->whereNotIn('id', $existingIds)
             ->delete();
     }
+
+    public function incrementBookedSlotsById(int $id): bool
+    {
+        $updated = $this->model
+            ->whereKey($id)
+            ->whereColumn('booked_slots', '<', 'slots')
+            ->increment('booked_slots');
+
+        return $updated > 0;
+    }
 }

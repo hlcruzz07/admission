@@ -34,8 +34,8 @@ export default function Index() {
             </div>
 
             {/* Theme Button */}
-            <div className="absolute top-5 right-5 z-20">
-                <ThemeButton />
+            <div className="absolute top-5 right-5 z-100">
+                <ThemeButton className="static" />
             </div>
 
             {/* Main Content */}

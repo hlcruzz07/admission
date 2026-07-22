@@ -14,9 +14,11 @@ return new class extends Migration {
             $table->id();
             $table->unsignedBigInteger('schedule_id');
             $table->time('time');
-            $table->integer('slots')->default(100);
+            $table->integer('slots')->default(0);
+            $table->integer('booked_slots')->default(0);
             $table->timestamps();
             $table->foreign('schedule_id')->references('id')->on('schedules')->cascadeOnDelete();
+            $table->softDeletes();
         });
     }
 

@@ -107,7 +107,6 @@ export default function EditSchedule({ open, setOpen, dataTimes }: EditScheduleP
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        console.log(data);
         if (!dataTimes) return;
 
         if (processing) return;

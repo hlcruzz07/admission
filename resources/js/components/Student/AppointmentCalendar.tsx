@@ -63,6 +63,13 @@ function formatTime(time24: string): string {
     return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
+// Returns how many seats are still open for a given time slot.
+// `slots` is the total capacity; `booked_slots` only ever increments,
+// so remaining capacity must always be derived, never read directly.
+function remainingSlots(t: TimeProps): number {
+    return Math.max(t.slots - t.booked_slots, 0);
+}
+
 // Find which campus/venue/schedule a given schedule_time_id belongs to,
 // so a controlled `value` can hydrate the picker on mount (e.g. student
 // goes "back" in a multi-step form and their prior pick should still show).
@@ -92,7 +99,7 @@ export default function AppointmentCalendar({ campuses, value, onChange }: Appoi
 
     const venuesWithSchedules: VenueProps[] = campus?.venues ?? [];
     const [venueId, setVenueId] = useState<number | null>(hydrated?.venue.id ?? venuesWithSchedules[0]?.id ?? null);
-    const venue = venuesWithSchedules.find((v) => v.id === venueId) ?? venuesWithSchedules[0];
+    const venue = venueId != null ? venuesWithSchedules.find((v) => v.id === venueId) : undefined;
 
     const initialCursor = hydrated ? new Date(hydrated.schedule.schedule_date) : new Date(today.getFullYear(), today.getMonth(), 1);
     const [cursor, setCursor] = useState(new Date(initialCursor.getFullYear(), initialCursor.getMonth(), 1));
@@ -100,8 +107,7 @@ export default function AppointmentCalendar({ campuses, value, onChange }: Appoi
 
     function handleCampusChange(id: number) {
         setCampusId(id);
-        const newCampus = campuses.find((c) => c.id === id);
-        setVenueId(newCampus?.venues?.[0]?.id ?? null);
+        setVenueId(null);
         setSelectedDate(null);
         onChange?.(null, null);
     }
@@ -166,7 +172,7 @@ export default function AppointmentCalendar({ campuses, value, onChange }: Appoi
                         <Building2 className="h-3.5 w-3.5" />
                         Campus
                     </Label>
-                    <Select value={campusId != null ? String(campusId) : undefined} onValueChange={(val) => handleCampusChange(Number(val))}>
+                    <Select value={campusId != null ? String(campusId) : ''} onValueChange={(val) => handleCampusChange(Number(val))}>
                         <SelectTrigger className="w-full">
                             <SelectValue placeholder="Select a campus" />
                         </SelectTrigger>
@@ -185,9 +191,9 @@ export default function AppointmentCalendar({ campuses, value, onChange }: Appoi
                         <MapPin className="h-3.5 w-3.5" />
                         Venue
                     </Label>
-                    <Select value={venueId != null ? String(venueId) : undefined} onValueChange={(val) => handleVenueChange(Number(val))}>
+                    <Select value={venueId != null ? String(venueId) : ''} onValueChange={(val) => handleVenueChange(Number(val))}>
                         <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select a venue" />
+                            <SelectValue placeholder="Choose an option" />
                         </SelectTrigger>
                         <SelectContent>
                             {venuesWithSchedules.map((v) => (
@@ -245,7 +251,7 @@ export default function AppointmentCalendar({ campuses, value, onChange }: Appoi
                             const schedule = scheduleByDate[key];
                             const hasSchedule = Boolean(schedule);
                             const isChosen = chosenDateKey !== null && key === chosenDateKey;
-                            const totalOpenSlots = schedule ? schedule.times?.reduce((sum, t) => sum + t.slots, 0) : 0;
+                            const totalOpenSlots = schedule ? schedule.times?.reduce((sum, t) => sum + remainingSlots(t), 0) : 0;
                             const isFull = hasSchedule && totalOpenSlots === 0;
                             const isPast = date < new Date(today.getFullYear(), today.getMonth(), today.getDate());
                             const clickable = hasSchedule && !isFull && !isPast;
@@ -359,7 +365,8 @@ export default function AppointmentCalendar({ campuses, value, onChange }: Appoi
                                     ?.slice()
                                     .sort((a, b) => a.time.localeCompare(b.time))
                                     .map((t) => {
-                                        const full = t.slots <= 0;
+                                        const remaining = remainingSlots(t);
+                                        const full = remaining <= 0;
                                         const active = value === t.id;
 
                                         return (
@@ -371,7 +378,7 @@ export default function AppointmentCalendar({ campuses, value, onChange }: Appoi
                                                 className={[
                                                     'flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left transition-colors',
                                                     full
-                                                        ? 'border-border bg-muted text-muted-foreground cursor-not-allowed opacity-60'
+                                                        ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-80'
                                                         : active
                                                           ? 'border-primary bg-accent! text-accent-foreground!'
                                                           : 'border-border hover:border-ring hover:bg-accent hover:text-accent-foreground',
@@ -392,7 +399,7 @@ export default function AppointmentCalendar({ campuses, value, onChange }: Appoi
                                                     ) : (
                                                         <>
                                                             <Users className="h-3 w-3" />
-                                                            {t.slots} slots left
+                                                            {remaining} slots left
                                                         </>
                                                     )}
                                                 </span>

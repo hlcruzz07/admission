@@ -31,6 +31,7 @@ class ScheduleTimeSeeder extends Seeder
                     'schedule_id' => $schedule->id,
                     'time' => $time,
                     'slots' => 150,
+
                 ]);
             }
         }

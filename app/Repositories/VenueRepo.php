@@ -28,4 +28,11 @@ class VenueRepo
             'name' => $name,
         ]);
     }
+
+    public function destroy(int $id)
+    {
+        $venue = $this->model->findOrFail($id);
+
+        $venue->delete();
+    }
 }

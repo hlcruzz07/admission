@@ -13,6 +13,7 @@ export type VenueProps = {
     schedules?: ScheduleProps[];
     created_at: string;
     updated_at: string;
+    campus?: CampusProps;
 };
 
 export type ScheduleProps = {
@@ -22,6 +23,7 @@ export type ScheduleProps = {
     times?: TimeProps[];
     created_at: string;
     updated_at: string;
+    venue?: VenueProps;
 };
 
 export type TimeProps = {
@@ -29,6 +31,8 @@ export type TimeProps = {
     schedule_id: number;
     slots: number;
     time: string;
+    booked_slots: number;
     created_at: string;
     updated_at: string;
+    schedule?: ScheduleProps;
 };

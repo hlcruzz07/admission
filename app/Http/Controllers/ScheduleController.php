@@ -56,9 +56,26 @@ class ScheduleController extends Controller
         }
     }
 
-    public function create(CreateScheduleRequest $request)
+    public function create(CreateScheduleRequest $request, int $venue_id)
     {
-        dd($request->all());
+
+        try {
+            DB::transaction(function () use ($request, $venue_id) {
+                $data = $request->all();
+
+                $schedule = $this->scheduleRepo->create($data, $venue_id);
+
+                foreach ($data['times'] as $timeData) {
+                    $this->scheduleTimeRepo->create($timeData, $schedule->id);
+                }
+            });
+
+            return back()->with('success', 'Schedule created successfully.');
+        } catch (\Throwable $th) {
+            Log::error($th->getMessage());
+
+            return back()->with('error', 'Something went wrong.');
+        }
     }
 
 
